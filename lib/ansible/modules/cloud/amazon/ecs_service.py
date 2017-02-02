@@ -274,7 +274,8 @@ class EcsServiceManager:
                 return c
         raise StandardError("Unknown problem describing service %s." % service_name)
 
-    def is_matching_service(self, expected, existing):
+    @staticmethod
+    def is_matching_service(expected, existing):
         if expected['task_definition'] != existing['taskDefinition']:
             return False
 
@@ -282,6 +283,11 @@ class EcsServiceManager:
             return False
 
         if (expected['desired_count'] or 0) != existing['desiredCount']:
+            return False
+
+        if ('deployment_configuration' in expected
+            and expected['deployment_configuration'] != {}
+            and expected['deployment_configuration'] != existing['deploymentConfiguration']):
             return False
 
         return True
@@ -360,10 +366,11 @@ def main():
 
     service_mgr = EcsServiceManager(module)
 
+    # map parameters
     deployment_configuration = map_complex_type(module.params['deployment_configuration'],
                                                             DEPLOYMENT_CONFIGURATION_TYPE_MAP)
-
     deploymentConfiguration = snake_dict_to_camel_dict(deployment_configuration)
+    module.params['deployment_configuration'] = deploymentConfiguration
 
     try:
         existing = service_mgr.describe_service(module.params['cluster'], module.params['name'])
